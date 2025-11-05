@@ -54,11 +54,11 @@ public class AccountManagementService {
         try {
             List<BankAccount> accounts = accountService.getAllAccounts();
             if (accounts.isEmpty()) {
-                menuService.showMessage("📭 No accounts found");
+                menuService.showMessage(" No accounts found");
                 return;
             }
 
-            menuService.showMessage("\n📋 ACCOUNTS LIST:");
+            menuService.showMessage("\n ACCOUNTS LIST:");
             menuService.showMessage("┌────────────────────────────────────┬────────────────────┬────────────┐");
             menuService.showMessage("│ ID                                 │ Name               │ Balance    │");
             menuService.showMessage("├────────────────────────────────────┼────────────────────┼────────────┤");

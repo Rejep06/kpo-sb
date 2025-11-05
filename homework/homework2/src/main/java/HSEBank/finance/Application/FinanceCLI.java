@@ -74,7 +74,7 @@ public class FinanceCLI implements CommandLineRunner {
                 case "7" -> systemToolsMenu();
                 case "8" -> demonstratePatterns();
                 case "0" -> {
-                    menuService.showMessage("\n👋 Goodbye!");
+                    menuService.showMessage("\n Goodbye!");
                     return;
                 }
                 default -> menuService.showError("Invalid choice!");
