@@ -1,0 +1,19 @@
+accounts:
+  - id: 123e4567-e89b-12d3-a456-426614174002
+    name: Investment Account
+    balance: 10000.0
+categories:
+  - id: 223e4567-e89b-12d3-a456-426614174002
+    type: EXPENSE
+    name: Healthcare
+  - id: 323e4567-e89b-12d3-a456-426614174002
+    type: INCOME
+    name: Dividends
+operations:
+  - id: 423e4567-e89b-12d3-a456-426614174002
+    type: INCOME
+    bankAccountId: 123e4567-e89b-12d3-a456-426614174002
+    amount: 150.0
+    date: 2024-01-17T10:00:00
+    categoryId: 323e4567-e89b-12d3-a456-426614174002
+    description: Stock dividends

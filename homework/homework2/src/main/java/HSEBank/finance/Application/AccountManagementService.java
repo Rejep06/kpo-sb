@@ -1,0 +1,113 @@
+package HSEBank.finance.Application;
+
+import HSEBank.finance.Core.domain.entities.BankAccount;
+import HSEBank.finance.Core.domain.interfaces.IBankAccountService;
+import HSEBank.finance.Core.patterns.commands.CreateAccountCommand;
+import HSEBank.finance.Core.patterns.commands.UpdateAccountCommand;
+import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AccountManagementService {
+    private final IBankAccountService accountService;
+    private final CLIMenuService menuService;
+    private final InputValidator inputValidator;
+
+    public void createAccount() {
+        try {
+            String name = menuService.getInput("Enter account name: ");
+            if (!inputValidator.isValidName(name)) {
+                menuService.showError("Account name cannot be empty");
+                return;
+            }
+
+            double balance = inputValidator.getValidatedDouble("Enter initial balance: ", 0.0, 1_000_000.0);
+
+            var createCmd = new CreateAccountCommand(accountService, name, balance);
+
+            String validationError = createCmd.validate();
+            if (validationError != null) {
+                menuService.showError(validationError);
+                return;
+            }
+
+            new TimingDecorator(createCmd).execute();
+            BankAccount account = createCmd.getCreatedAccount();
+            menuService.showSuccess("Account created: " + account.getName() + " (ID: " + account.getId() + ")");
+
+        } catch (IllegalArgumentException e) {
+            menuService.showError("Validation error: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Account creation failed", e);
+            menuService.showError("System error. Please try again.");
+        }
+    }
+
+    public void showAllAccounts() {
+        try {
+            List<BankAccount> accounts = accountService.getAllAccounts();
+            if (accounts.isEmpty()) {
+                menuService.showMessage("📭 No accounts found");
+                return;
+            }
+
+            menuService.showMessage("\n📋 ACCOUNTS LIST:");
+            menuService.showMessage("┌────────────────────────────────────┬────────────────────┬────────────┐");
+            menuService.showMessage("│ ID                                 │ Name               │ Balance    │");
+            menuService.showMessage("├────────────────────────────────────┼────────────────────┼────────────┤");
+
+            for (BankAccount account : accounts) {
+                String line = String.format("│ %-34s │ %-18s │ %10.2f │",
+                        account.getId(),
+                        account.getName(),
+                        account.getBalance());
+                menuService.showMessage(line);
+            }
+            menuService.showMessage("└────────────────────────────────────┴────────────────────┴────────────┘");
+
+        } catch (Exception e) {
+            log.error("Error loading accounts", e);
+            menuService.showError("Failed to load accounts");
+        }
+    }
+
+    public void updateAccount() {
+        try {
+            String id = inputValidator.getValidatedUUID("Enter account ID to update: ");
+            String name = menuService.getInput("Enter new account name: ");
+            double balance = inputValidator.getValidatedDouble("Enter new balance: ", 0.0, 1_000_000.0);
+
+            var updateCmd = new UpdateAccountCommand(accountService, UUID.fromString(id), name, balance);
+            new TimingDecorator(updateCmd).execute();
+
+            menuService.showSuccess("Account updated successfully");
+
+        } catch (IllegalArgumentException e) {
+            menuService.showError("Validation error: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Account update failed", e);
+            menuService.showError("Failed to update account");
+        }
+    }
+
+    public void deleteAccount() {
+        try {
+            String id = inputValidator.getValidatedUUID("Enter account ID to delete: ");
+            accountService.deleteAccount(UUID.fromString(id));
+            menuService.showSuccess("Account deleted successfully");
+
+        } catch (IllegalArgumentException e) {
+            menuService.showError("Account not found: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Account deletion failed", e);
+            menuService.showError("Failed to delete account");
+        }
+    }
+}
