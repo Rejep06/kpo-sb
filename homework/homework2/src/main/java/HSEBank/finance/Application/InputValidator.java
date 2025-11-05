@@ -1,5 +1,6 @@
 package HSEBank.finance.Application;
 
+import HSEBank.finance.Core.domain.enums.OperationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -12,12 +13,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InputValidator {
     private final CLIMenuService menuService;
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public double getValidatedDouble(String prompt, double min, double max) {
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
                 double value = Double.parseDouble(input);
+
                 if (value < min) {
                     menuService.showError("Value must be at least " + min);
                     continue;
@@ -37,7 +40,7 @@ public class InputValidator {
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
-                UUID.fromString(input); // Validate UUID format
+                UUID.fromString(input);
                 return input;
             } catch (IllegalArgumentException e) {
                 menuService.showError("Please enter a valid UUID format");
@@ -50,13 +53,31 @@ public class InputValidator {
     }
 
     public LocalDateTime getValidatedDateTime(String prompt) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
-                return LocalDateTime.parse(input, formatter);
+                return LocalDateTime.parse(input, dateFormatter);
             } catch (DateTimeParseException e) {
                 menuService.showError("Invalid date format. Please use yyyy-MM-dd HH:mm");
+            }
+        }
+    }
+
+    public OperationType getValidatedOperationType(String prompt) {
+        while (true) {
+            try {
+                menuService.showMessage(prompt);
+                menuService.showMessage("1. Income");
+                menuService.showMessage("2. Expense");
+                String choice = menuService.getInput("Choice: ");
+
+                return switch (choice) {
+                    case "1" -> OperationType.INCOME;
+                    case "2" -> OperationType.EXPENSE;
+                    default -> throw new IllegalArgumentException("Invalid choice");
+                };
+            } catch (IllegalArgumentException e) {
+                menuService.showError("Please select 1 for Income or 2 for Expense");
             }
         }
     }

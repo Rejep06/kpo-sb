@@ -8,58 +8,30 @@ import HSEBank.finance.Core.patterns.commands.DeleteOperationCommand;
 import HSEBank.finance.Core.patterns.commands.UpdateOperationCommand;
 import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
-@Component
+@Slf4j
+@Service
 @RequiredArgsConstructor
 public class OperationManager {
-    private final CLIMenuService menuService;
     private final IOperationService operationService;
+    private final CLIMenuService menuService;
+    private final InputValidator inputValidator;
 
-    public void manageOperations() {
-        while (true) {
-            showOperationMenu();
-            String choice = menuService.getInput("\nSelect option: ");
-
-            switch (choice) {
-                case "1" -> createOperation();
-                case "2" -> showAllOperations();
-                case "3" -> findOperationById();
-                case "4" -> updateOperation();
-                case "5" -> deleteOperation();
-                case "0" -> { return; }
-                default -> menuService.showError("Invalid choice!");
-            }
-        }
-    }
-
-    private void showOperationMenu() {
-        menuService.showMessage("\n OPERATION MANAGEMENT:");
-        menuService.showMessage("1. Create Operation");
-        menuService.showMessage("2. List All Operations");
-        menuService.showMessage("3. Find Operation by ID");
-        menuService.showMessage("4. ️ Update Operation");
-        menuService.showMessage("5. Delete Operation");
-        menuService.showMessage("0. ️ Back");
-    }
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public void createOperation() {
         try {
-            menuService.showMessage("Select operation type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
-            String accountId = menuService.getInput("Enter account ID: ");
-            String amountInput = menuService.getInput("Enter amount: ");
-            double amount = Double.parseDouble(amountInput);
-            String categoryId = menuService.getInput("Enter category ID: ");
+            OperationType type = inputValidator.getValidatedOperationType("Select operation type:");
+            String accountId = inputValidator.getValidatedUUID("Enter account ID: ");
+            double amount = inputValidator.getValidatedDouble("Enter amount: ", 0.01, 1_000_000.0);
+            String categoryId = inputValidator.getValidatedUUID("Enter category ID: ");
             String description = menuService.getInput("Enter description: ");
 
             LocalDateTime date = LocalDateTime.now();
@@ -72,11 +44,11 @@ public class OperationManager {
             menuService.showSuccess("Operation created: " + operation.getId());
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation creation failed: " + e.getMessage());
         }
     }
 
-    private void showAllOperations() {
+    public void showAllOperations() {
         try {
             List<Operation> operations = operationService.getAllOperations();
             if (operations.isEmpty()) {
@@ -97,19 +69,19 @@ public class OperationManager {
                         operation.getType(),
                         operation.getBankAccountId(),
                         operation.getAmount(),
-                        operation.getDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                        operation.getDate().format(dateFormatter));
                 menuService.showMessage(line);
             }
             menuService.showMessage("└────────────────────────────────────┴────────────┴────────────────────┴────────────┴────────────────────┘");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Failed to load operations: " + e.getMessage());
         }
     }
 
-    private void findOperationById() {
+    public void findOperationById() {
         try {
-            String id = menuService.getInput("Enter operation ID: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID: ");
             Operation operation = operationService.getOperation(UUID.fromString(id));
 
             menuService.showMessage("\n OPERATION DETAILS:");
@@ -122,24 +94,17 @@ public class OperationManager {
             menuService.showMessage("Description: " + operation.getDescription());
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation not found: " + e.getMessage());
         }
     }
 
-    private void updateOperation() {
+    public void updateOperation() {
         try {
-            String id = menuService.getInput("Enter operation ID to update: ");
-
-            menuService.showMessage("Select new operation type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
-            String accountId = menuService.getInput("Enter new account ID: ");
-            String amountInput = menuService.getInput("Enter new amount: ");
-            double amount = Double.parseDouble(amountInput);
-            String categoryId = menuService.getInput("Enter new category ID: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID to update: ");
+            OperationType type = inputValidator.getValidatedOperationType("Select new operation type:");
+            String accountId = inputValidator.getValidatedUUID("Enter new account ID: ");
+            double amount = inputValidator.getValidatedDouble("Enter new amount: ", 0.01, 1_000_000.0);
+            String categoryId = inputValidator.getValidatedUUID("Enter new category ID: ");
             String description = menuService.getInput("Enter new description: ");
 
             LocalDateTime date = LocalDateTime.now();
@@ -151,20 +116,20 @@ public class OperationManager {
             menuService.showSuccess("Operation updated successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation update failed: " + e.getMessage());
         }
     }
 
-    private void deleteOperation() {
+    public void deleteOperation() {
         try {
-            String id = menuService.getInput("Enter operation ID to delete: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID to delete: ");
             var deleteOpCmd = new DeleteOperationCommand(operationService, UUID.fromString(id));
             new TimingDecorator(deleteOpCmd).execute();
 
             menuService.showSuccess("Operation deleted successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation deletion failed: " + e.getMessage());
         }
     }
 }

@@ -10,7 +10,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
 public class BankAccountRepository implements IRepository<BankAccount> {
     private final Map<UUID, BankAccount> storage = new ConcurrentHashMap<>();
 

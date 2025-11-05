@@ -21,9 +21,9 @@ public class BankAccount implements IEntity {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Account name cannot be empty");
         }
-        if (balance < 0) {
-            throw new IllegalArgumentException("Balance cannot be negative");
-        }
+//        if (balance < 0) {
+//            throw new IllegalArgumentException("Balance cannot be negative");
+//        }
         this.name = name;
         this.balance = balance;
     }

@@ -10,7 +10,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
 public class OperationRepository implements IRepository<Operation> {
     private final Map<UUID, Operation> storage = new ConcurrentHashMap<>();
 

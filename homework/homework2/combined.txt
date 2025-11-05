@@ -5,6 +5,7 @@ import HSEBank.finance.Core.domain.interfaces.IBankAccountService;
 import HSEBank.finance.Core.patterns.commands.CreateAccountCommand;
 import HSEBank.finance.Core.patterns.commands.UpdateAccountCommand;
 import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
+import HSEBank.finance.Core.services.BalanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class AccountManagementService {
     private final IBankAccountService accountService;
     private final CLIMenuService menuService;
     private final InputValidator inputValidator;
+    private final BalanceService balanceService;
 
     public void createAccount() {
         try {
@@ -54,11 +56,11 @@ public class AccountManagementService {
         try {
             List<BankAccount> accounts = accountService.getAllAccounts();
             if (accounts.isEmpty()) {
-                menuService.showMessage(" No accounts found");
+                menuService.showMessage("📭 No accounts found");
                 return;
             }
 
-            menuService.showMessage("\n ACCOUNTS LIST:");
+            menuService.showMessage("\n📋 ACCOUNTS LIST:");
             menuService.showMessage("┌────────────────────────────────────┬────────────────────┬────────────┐");
             menuService.showMessage("│ ID                                 │ Name               │ Balance    │");
             menuService.showMessage("├────────────────────────────────────┼────────────────────┼────────────┤");
@@ -75,6 +77,21 @@ public class AccountManagementService {
         } catch (Exception e) {
             log.error("Error loading accounts", e);
             menuService.showError("Failed to load accounts");
+        }
+    }
+
+    public void findAccountById() {
+        try {
+            String id = inputValidator.getValidatedUUID("Enter account ID: ");
+            BankAccount account = accountService.getAccount(UUID.fromString(id));
+
+            menuService.showMessage("\n🔍 ACCOUNT DETAILS:");
+            menuService.showMessage("ID: " + account.getId());
+            menuService.showMessage("Name: " + account.getName());
+            menuService.showMessage("Balance: " + account.getBalance());
+
+        } catch (Exception e) {
+            menuService.showError("Account not found: " + e.getMessage());
         }
     }
 
@@ -110,146 +127,10 @@ public class AccountManagementService {
             menuService.showError("Failed to delete account");
         }
     }
-}package HSEBank.finance.Application;
 
-import HSEBank.finance.Core.domain.entities.BankAccount;
-import HSEBank.finance.Core.domain.interfaces.IBankAccountService;
-import HSEBank.finance.Core.patterns.commands.CreateAccountCommand;
-import HSEBank.finance.Core.patterns.commands.UpdateAccountCommand;
-import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
-import HSEBank.finance.Core.services.BalanceService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.UUID;
-
-@Component
-@RequiredArgsConstructor
-public class AccountManager {
-    private final CLIMenuService menuService;
-    private final IBankAccountService accountService;
-    private final InputValidator inputValidator;
-    private final BalanceService balanceService;
-
-    public void manageAccounts() {
-        while (true) {
-            String choice = menuService.showAccountManagementMenu();
-
-            switch (choice) {
-                case "1" -> createAccount();
-                case "2" -> showAllAccounts();
-                case "3" -> findAccountById();
-                case "4" -> updateAccount();
-                case "5" -> deleteAccount();
-                case "6" -> recalculateAccountBalance();
-                case "0" -> { return; }
-                default -> menuService.showError("Invalid choice!");
-            }
-        }
-    }
-
-    public void createAccount() {
+    public void recalculateAccountBalance() {
         try {
-            String name = menuService.getInput("Enter account name: ");
-            if (!inputValidator.isValidName(name)) {
-                menuService.showError("Account name cannot be empty");
-                return;
-            }
-
-            double balance = inputValidator.getValidatedDouble("Enter initial balance: ", 0.0, 1_000_000.0);
-
-            var createCmd = new CreateAccountCommand(accountService, name, balance);
-            String validationError = createCmd.validate();
-            if (validationError != null) {
-                menuService.showError(validationError);
-                return;
-            }
-
-            new TimingDecorator(createCmd).execute();
-            BankAccount account = createCmd.getCreatedAccount();
-            menuService.showSuccess("Account created: " + account.getName() + " (ID: " + account.getId() + ")");
-
-        } catch (Exception e) {
-            menuService.showError(e.getMessage());
-        }
-    }
-
-    private void showAllAccounts() {
-        try {
-            List<BankAccount> accounts = accountService.getAllAccounts();
-            if (accounts.isEmpty()) {
-                menuService.showMessage(" No accounts found");
-                return;
-            }
-
-            menuService.showMessage("\n ACCOUNTS LIST:");
-            menuService.showMessage("┌────────────────────────────────────┬────────────────────┬────────────┐");
-            menuService.showMessage("│ ID                                 │ Name               │ Balance    │");
-            menuService.showMessage("├────────────────────────────────────┼────────────────────┼────────────┤");
-
-            for (BankAccount account : accounts) {
-                String line = String.format("│ %-34s │ %-18s │ %10.2f │",
-                        account.getId(), account.getName(), account.getBalance());
-                menuService.showMessage(line);
-            }
-            menuService.showMessage("└────────────────────────────────────┴────────────────────┴────────────┘");
-
-        } catch (Exception e) {
-            menuService.showError(e.getMessage());
-        }
-    }
-
-    private void findAccountById() {
-        try {
-            String id = menuService.getInput("Enter account ID: ");
-            BankAccount account = accountService.getAccount(UUID.fromString(id));
-
-            if (account == null) {
-                menuService.showError("Account not found");
-                return;
-            }
-
-            menuService.showMessage("\n ACCOUNT DETAILS:");
-            menuService.showMessage("ID: " + account.getId());
-            menuService.showMessage("Name: " + account.getName());
-            menuService.showMessage("Balance: " + account.getBalance());
-
-        } catch (Exception e) {
-            menuService.showError(e.getMessage());
-        }
-    }
-
-    private void updateAccount() {
-        try {
-            String id = menuService.getInput("Enter account ID to update: ");
-            String name = menuService.getInput("Enter new account name: ");
-            String balanceInput = menuService.getInput("Enter new balance: ");
-            double balance = Double.parseDouble(balanceInput);
-
-            var updateCmd = new UpdateAccountCommand(accountService, UUID.fromString(id), name, balance);
-            new TimingDecorator(updateCmd).execute();
-            menuService.showSuccess("Account updated successfully");
-
-        } catch (Exception e) {
-            menuService.showError(e.getMessage());
-        }
-    }
-
-    private void deleteAccount() {
-        try {
-            String id = menuService.getInput("Enter account ID to delete: ");
-            accountService.deleteAccount(UUID.fromString(id));
-            menuService.showSuccess("Account deleted successfully");
-
-        } catch (Exception e) {
-            menuService.showError(e.getMessage());
-        }
-    }
-
-    private void recalculateAccountBalance() {
-        try {
-            String accountId = menuService.getInput("Enter account ID to recalculate: ");
+            String accountId = inputValidator.getValidatedUUID("Enter account ID to recalculate: ");
             double newBalance = balanceService.recalculateBalance(UUID.fromString(accountId));
             menuService.showSuccess("Balance recalculated: " + newBalance);
         } catch (Exception e) {
@@ -305,7 +186,7 @@ public class AnalyticsManager {
             LocalDateTime endDate = getDateInput("Enter end date (yyyy-MM-dd HH:mm): ");
 
             double difference = analyticsFacade.calculateBalanceDifference(startDate, endDate);
-            menuService.showMessage(String.format("\n BALANCE DIFFERENCE: %.2f", difference));
+            menuService.showMessage(String.format("\n📊 BALANCE DIFFERENCE: %.2f", difference));
             menuService.showMessage("Period: " + startDate.format(dateFormatter) + " - " + endDate.format(dateFormatter));
 
         } catch (Exception e) {
@@ -380,63 +261,34 @@ import HSEBank.finance.Core.domain.interfaces.ICategoryService;
 import HSEBank.finance.Core.patterns.commands.UpdateCategoryCommand;
 import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
-@Component
+@Slf4j
+@Service
 @RequiredArgsConstructor
 public class CategoryManager {
-    private final CLIMenuService menuService;
     private final ICategoryService categoryService;
+    private final CLIMenuService menuService;
+    private final InputValidator inputValidator;
 
-    public void manageCategories() {
-        while (true) {
-            showCategoryMenu();
-            String choice = menuService.getInput("\nSelect option: ");
-
-            switch (choice) {
-                case "1" -> createCategory();
-                case "2" -> showAllCategories();
-                case "3" -> findCategoryById();
-                case "4" -> updateCategory();
-                case "5" -> deleteCategory();
-                case "0" -> { return; }
-                default -> menuService.showError("Invalid choice!");
-            }
-        }
-    }
-
-    private void showCategoryMenu() {
-        menuService.showMessage("\n CATEGORY MANAGEMENT:");
-        menuService.showMessage("1. Create Category");
-        menuService.showMessage("2. List All Categories");
-        menuService.showMessage("3. Find Category by ID");
-        menuService.showMessage("4. Update Category");
-        menuService.showMessage("5. Delete Category");
-        menuService.showMessage("0. Back");
-    }
-
-    private void createCategory() {
+    public void createCategory() {
         try {
-            menuService.showMessage("Select category type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
+            OperationType type = inputValidator.getValidatedOperationType("Select category type:");
             String name = menuService.getInput("Enter category name: ");
 
             Category category = categoryService.createCategory(type, name);
             menuService.showSuccess("Category created: " + category.getName() + " (ID: " + category.getId() + ")");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Category creation failed: " + e.getMessage());
         }
     }
 
-    private void showAllCategories() {
+    public void showAllCategories() {
         try {
             List<Category> categories = categoryService.getAllCategories();
             if (categories.isEmpty()) {
@@ -452,19 +304,22 @@ public class CategoryManager {
             for (Category category : categories) {
                 String typeEmoji = category.getOperationType() == OperationType.INCOME ? "💰" : "💸";
                 String line = String.format("│ %-34s │ %-4s%-6s │ %-18s │",
-                        category.getId(), typeEmoji, category.getOperationType(), category.getName());
+                        category.getId(),
+                        typeEmoji,
+                        category.getOperationType(),
+                        category.getName());
                 menuService.showMessage(line);
             }
             menuService.showMessage("└────────────────────────────────────┴────────────┴────────────────────┘");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Failed to load categories: " + e.getMessage());
         }
     }
 
-    private void findCategoryById() {
+    public void findCategoryById() {
         try {
-            String id = menuService.getInput("Enter category ID: ");
+            String id = inputValidator.getValidatedUUID("Enter category ID: ");
             Category category = categoryService.getCategory(UUID.fromString(id));
 
             menuService.showMessage("\n CATEGORY DETAILS:");
@@ -473,39 +328,34 @@ public class CategoryManager {
             menuService.showMessage("Name: " + category.getName());
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Category not found: " + e.getMessage());
         }
     }
 
-    private void updateCategory() {
+    public void updateCategory() {
         try {
-            String id = menuService.getInput("Enter category ID to update: ");
-
-            menuService.showMessage("Select new category type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
+            String id = inputValidator.getValidatedUUID("Enter category ID to update: ");
+            OperationType type = inputValidator.getValidatedOperationType("Select new category type:");
             String name = menuService.getInput("Enter new category name: ");
 
             var updateCmd = new UpdateCategoryCommand(categoryService, UUID.fromString(id), type, name);
             new TimingDecorator(updateCmd).execute();
+
             menuService.showSuccess("Category updated successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Category update failed: " + e.getMessage());
         }
     }
 
-    private void deleteCategory() {
+    public void deleteCategory() {
         try {
-            String id = menuService.getInput("Enter category ID to delete: ");
+            String id = inputValidator.getValidatedUUID("Enter category ID to delete: ");
             categoryService.deleteCategory(UUID.fromString(id));
             menuService.showSuccess("Category deleted successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Category deletion failed: " + e.getMessage());
         }
     }
 }package HSEBank.finance.Application;
@@ -519,7 +369,7 @@ public class CLIMenuService {
 
     public void showWelcomeMessage() {
         System.out.println("╔══════════════════════════════════════╗");
-        System.out.println("║          HSEBank Finance CLI         ║");
+        System.out.println("║           HSEBank Finance CLI        ║");
         System.out.println("║      Financial Management System     ║");
         System.out.println("╚══════════════════════════════════════╝");
         System.out.println();
@@ -554,7 +404,7 @@ public class CLIMenuService {
     }
 
     public String showSystemToolsMenu() {
-        System.out.println("\nSYSTEM TOOLS:");
+        System.out.println("\n SYSTEM TOOLS:");
         System.out.println("1. Recalculate All Balances");
         System.out.println("2. Cache Statistics");
         System.out.println("3. Clear Cache");
@@ -645,41 +495,23 @@ public class ExportManager {
     }
 }package HSEBank.finance.Application;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class FinanceCLI implements CommandLineRunner {
 
     private final CLIMenuService menuService;
-    private final AccountManager accountManager;
-    private final CategoryManager categoryManager;
+    private final AccountManagementService accountManagementService;
+    private final CategoryManager categoryManagementService;
     private final OperationManager operationManager;
     private final AnalyticsManager analyticsManager;
     private final ExportManager exportManager;
     private final ImportManager importManager;
     private final SystemToolsManager systemToolsManager;
     private final PatternDemoManager patternDemoManager;
-
-    public FinanceCLI(CLIMenuService menuService,
-                      AccountManager accountManager,
-                      CategoryManager categoryManager,
-                      OperationManager operationManager,
-                      AnalyticsManager analyticsManager,
-                      ExportManager exportManager,
-                      ImportManager importManager,
-                      SystemToolsManager systemToolsManager,
-                      PatternDemoManager patternDemoManager) {
-        this.menuService = menuService;
-        this.accountManager = accountManager;
-        this.categoryManager = categoryManager;
-        this.operationManager = operationManager;
-        this.analyticsManager = analyticsManager;
-        this.exportManager = exportManager;
-        this.importManager = importManager;
-        this.systemToolsManager = systemToolsManager;
-        this.patternDemoManager = patternDemoManager;
-    }
 
     @Override
     public void run(String... args) {
@@ -692,18 +524,83 @@ public class FinanceCLI implements CommandLineRunner {
             String choice = menuService.showMainMenu();
 
             switch (choice) {
-                case "1" -> accountManager.manageAccounts();
-                case "2" -> categoryManager.manageCategories();
-                case "3" -> operationManager.manageOperations();
+                case "1" -> accountManagement();
+                case "2" -> categoryManagement();
+                case "3" -> operationManagement();
                 case "4" -> analyticsManager.showAnalyticsMenu();
                 case "5" -> exportManager.showExportMenu();
                 case "6" -> importManager.showImportMenu();
                 case "7" -> systemToolsManager.showSystemToolsMenu();
                 case "8" -> patternDemoManager.demonstratePatterns();
                 case "0" -> {
-                    menuService.showMessage("\n Goodbye!");
+                    menuService.showMessage("\n👋 Goodbye!");
                     return;
                 }
+                default -> menuService.showError("Invalid choice!");
+            }
+        }
+    }
+
+    private void accountManagement() {
+        while (true) {
+            String choice = menuService.showAccountManagementMenu();
+
+            switch (choice) {
+                case "1" -> accountManagementService.createAccount();
+                case "2" -> accountManagementService.showAllAccounts();
+                case "3" -> accountManagementService.findAccountById();
+                case "4" -> accountManagementService.updateAccount();
+                case "5" -> accountManagementService.deleteAccount();
+                case "6" -> accountManagementService.recalculateAccountBalance();
+                case "0" -> { return; }
+                default -> menuService.showError("Invalid choice!");
+            }
+        }
+    }
+
+    private void categoryManagement() {
+        while (true) {
+            menuService.showMessage("\n📁 CATEGORY MANAGEMENT:");
+            menuService.showMessage("1. 📝 Create Category");
+            menuService.showMessage("2. 📋 List All Categories");
+            menuService.showMessage("3. 🔍 Find Category by ID");
+            menuService.showMessage("4. ✏️ Update Category");
+            menuService.showMessage("5. 🗑️ Delete Category");
+            menuService.showMessage("0. ↩️ Back");
+
+            String choice = menuService.getInput("\nSelect option: ");
+
+            switch (choice) {
+                case "1" -> categoryManagementService.createCategory();
+                case "2" -> categoryManagementService.showAllCategories();
+                case "3" -> categoryManagementService.findCategoryById();
+                case "4" -> categoryManagementService.updateCategory();
+                case "5" -> categoryManagementService.deleteCategory();
+                case "0" -> { return; }
+                default -> menuService.showError("Invalid choice!");
+            }
+        }
+    }
+
+    private void operationManagement() {
+        while (true) {
+            menuService.showMessage("\n💰 OPERATION MANAGEMENT:");
+            menuService.showMessage("1. 📝 Create Operation");
+            menuService.showMessage("2. 📋 List All Operations");
+            menuService.showMessage("3. 🔍 Find Operation by ID");
+            menuService.showMessage("4. ✏️ Update Operation");
+            menuService.showMessage("5. 🗑️ Delete Operation");
+            menuService.showMessage("0. ↩️ Back");
+
+            String choice = menuService.getInput("\nSelect option: ");
+
+            switch (choice) {
+                case "1" -> operationManager.createOperation();
+                case "2" -> operationManager.showAllOperations();
+                case "3" -> operationManager.findOperationById();
+                case "4" -> operationManager.updateOperation();
+                case "5" -> operationManager.deleteOperation();
+                case "0" -> { return; }
                 default -> menuService.showError("Invalid choice!");
             }
         }
@@ -765,6 +662,7 @@ public class ImportManager {
     }
 }package HSEBank.finance.Application;
 
+import HSEBank.finance.Core.domain.enums.OperationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -777,12 +675,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InputValidator {
     private final CLIMenuService menuService;
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public double getValidatedDouble(String prompt, double min, double max) {
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
                 double value = Double.parseDouble(input);
+
                 if (value < min) {
                     menuService.showError("Value must be at least " + min);
                     continue;
@@ -802,7 +702,7 @@ public class InputValidator {
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
-                UUID.fromString(input); // Validate UUID format
+                UUID.fromString(input);
                 return input;
             } catch (IllegalArgumentException e) {
                 menuService.showError("Please enter a valid UUID format");
@@ -815,13 +715,31 @@ public class InputValidator {
     }
 
     public LocalDateTime getValidatedDateTime(String prompt) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         while (true) {
             try {
                 String input = menuService.getInput(prompt);
-                return LocalDateTime.parse(input, formatter);
+                return LocalDateTime.parse(input, dateFormatter);
             } catch (DateTimeParseException e) {
                 menuService.showError("Invalid date format. Please use yyyy-MM-dd HH:mm");
+            }
+        }
+    }
+
+    public OperationType getValidatedOperationType(String prompt) {
+        while (true) {
+            try {
+                menuService.showMessage(prompt);
+                menuService.showMessage("1. Income");
+                menuService.showMessage("2. Expense");
+                String choice = menuService.getInput("Choice: ");
+
+                return switch (choice) {
+                    case "1" -> OperationType.INCOME;
+                    case "2" -> OperationType.EXPENSE;
+                    default -> throw new IllegalArgumentException("Invalid choice");
+                };
+            } catch (IllegalArgumentException e) {
+                menuService.showError("Please select 1 for Income or 2 for Expense");
             }
         }
     }
@@ -835,58 +753,30 @@ import HSEBank.finance.Core.patterns.commands.DeleteOperationCommand;
 import HSEBank.finance.Core.patterns.commands.UpdateOperationCommand;
 import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
-@Component
+@Slf4j
+@Service
 @RequiredArgsConstructor
 public class OperationManager {
-    private final CLIMenuService menuService;
     private final IOperationService operationService;
+    private final CLIMenuService menuService;
+    private final InputValidator inputValidator;
 
-    public void manageOperations() {
-        while (true) {
-            showOperationMenu();
-            String choice = menuService.getInput("\nSelect option: ");
-
-            switch (choice) {
-                case "1" -> createOperation();
-                case "2" -> showAllOperations();
-                case "3" -> findOperationById();
-                case "4" -> updateOperation();
-                case "5" -> deleteOperation();
-                case "0" -> { return; }
-                default -> menuService.showError("Invalid choice!");
-            }
-        }
-    }
-
-    private void showOperationMenu() {
-        menuService.showMessage("\n OPERATION MANAGEMENT:");
-        menuService.showMessage("1. Create Operation");
-        menuService.showMessage("2. List All Operations");
-        menuService.showMessage("3. Find Operation by ID");
-        menuService.showMessage("4.️ Update Operation");
-        menuService.showMessage("5.️ Delete Operation");
-        menuService.showMessage("0.️ Back");
-    }
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public void createOperation() {
         try {
-            menuService.showMessage("Select operation type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
-            String accountId = menuService.getInput("Enter account ID: ");
-            String amountInput = menuService.getInput("Enter amount: ");
-            double amount = Double.parseDouble(amountInput);
-            String categoryId = menuService.getInput("Enter category ID: ");
+            OperationType type = inputValidator.getValidatedOperationType("Select operation type:");
+            String accountId = inputValidator.getValidatedUUID("Enter account ID: ");
+            double amount = inputValidator.getValidatedDouble("Enter amount: ", 0.01, 1_000_000.0);
+            String categoryId = inputValidator.getValidatedUUID("Enter category ID: ");
             String description = menuService.getInput("Enter description: ");
 
             LocalDateTime date = LocalDateTime.now();
@@ -899,11 +789,11 @@ public class OperationManager {
             menuService.showSuccess("Operation created: " + operation.getId());
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation creation failed: " + e.getMessage());
         }
     }
 
-    private void showAllOperations() {
+    public void showAllOperations() {
         try {
             List<Operation> operations = operationService.getAllOperations();
             if (operations.isEmpty()) {
@@ -924,19 +814,19 @@ public class OperationManager {
                         operation.getType(),
                         operation.getBankAccountId(),
                         operation.getAmount(),
-                        operation.getDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                        operation.getDate().format(dateFormatter));
                 menuService.showMessage(line);
             }
             menuService.showMessage("└────────────────────────────────────┴────────────┴────────────────────┴────────────┴────────────────────┘");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Failed to load operations: " + e.getMessage());
         }
     }
 
-    private void findOperationById() {
+    public void findOperationById() {
         try {
-            String id = menuService.getInput("Enter operation ID: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID: ");
             Operation operation = operationService.getOperation(UUID.fromString(id));
 
             menuService.showMessage("\n OPERATION DETAILS:");
@@ -949,24 +839,17 @@ public class OperationManager {
             menuService.showMessage("Description: " + operation.getDescription());
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation not found: " + e.getMessage());
         }
     }
 
-    private void updateOperation() {
+    public void updateOperation() {
         try {
-            String id = menuService.getInput("Enter operation ID to update: ");
-
-            menuService.showMessage("Select new operation type:");
-            menuService.showMessage("1. Income");
-            menuService.showMessage("2. Expense");
-            String typeChoice = menuService.getInput("Choice: ");
-
-            OperationType type = typeChoice.equals("1") ? OperationType.INCOME : OperationType.EXPENSE;
-            String accountId = menuService.getInput("Enter new account ID: ");
-            String amountInput = menuService.getInput("Enter new amount: ");
-            double amount = Double.parseDouble(amountInput);
-            String categoryId = menuService.getInput("Enter new category ID: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID to update: ");
+            OperationType type = inputValidator.getValidatedOperationType("Select new operation type:");
+            String accountId = inputValidator.getValidatedUUID("Enter new account ID: ");
+            double amount = inputValidator.getValidatedDouble("Enter new amount: ", 0.01, 1_000_000.0);
+            String categoryId = inputValidator.getValidatedUUID("Enter new category ID: ");
             String description = menuService.getInput("Enter new description: ");
 
             LocalDateTime date = LocalDateTime.now();
@@ -978,20 +861,20 @@ public class OperationManager {
             menuService.showSuccess("Operation updated successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation update failed: " + e.getMessage());
         }
     }
 
-    private void deleteOperation() {
+    public void deleteOperation() {
         try {
-            String id = menuService.getInput("Enter operation ID to delete: ");
+            String id = inputValidator.getValidatedUUID("Enter operation ID to delete: ");
             var deleteOpCmd = new DeleteOperationCommand(operationService, UUID.fromString(id));
             new TimingDecorator(deleteOpCmd).execute();
 
             menuService.showSuccess("Operation deleted successfully");
 
         } catch (Exception e) {
-            menuService.showError(e.getMessage());
+            menuService.showError("Operation deletion failed: " + e.getMessage());
         }
     }
 }package HSEBank.finance.Application;
@@ -1023,7 +906,7 @@ public class PatternDemoManager {
     private final AnalyticsFacade analyticsFacade;
 
     public void demonstratePatterns() {
-        menuService.showMessage("\n PATTERN DEMONSTRATIONS:");
+        menuService.showMessage("\n🎯 PATTERN DEMONSTRATIONS:");
         menuService.showMessage("1. Command Pattern Demo");
         menuService.showMessage("2. Decorator Pattern Demo");
         menuService.showMessage("3. Full System Demo");
@@ -1039,23 +922,23 @@ public class PatternDemoManager {
     }
 
     private void demonstrateCommands() {
-        menuService.showMessage("\n COMMAND PATTERN DEMO");
+        menuService.showMessage("\n⚡ COMMAND PATTERN DEMO");
 
         // Create account using command
         var createCmd = new CreateAccountCommand(accountService, "Command Demo Account", 1000.0);
         new TimingDecorator(createCmd).execute();
 
         BankAccount account = createCmd.getCreatedAccount();
-        menuService.showMessage("Created account: " + account.getName());
+        menuService.showMessage("✅ Created account: " + account.getName());
 
         // Update account using command
         var updateCmd = new UpdateAccountCommand(accountService, account.getId(), "Updated Demo Account", 1500.0);
         new TimingDecorator(updateCmd).execute();
-        menuService.showMessage("Updated account balance: " + updateCmd.getUpdatedAccount().getBalance());
+        menuService.showMessage("✅ Updated account balance: " + updateCmd.getUpdatedAccount().getBalance());
     }
 
     private void demonstrateDecorator() {
-        menuService.showMessage("\n DECORATOR PATTERN DEMO");
+        menuService.showMessage("\n🎭 DECORATOR PATTERN DEMO");
 
         // Create a category first for the demo
         Category demoCategory = categoryService.createCategory(OperationType.EXPENSE, "Demo Category");
@@ -1073,7 +956,7 @@ public class PatternDemoManager {
     }
 
     private void runFullDemo() {
-        menuService.showMessage("\n FULL SYSTEM DEMO");
+        menuService.showMessage("\n🚀 FULL SYSTEM DEMO");
 
         // Create demo data
         BankAccount demoAccount = accountService.createAccount("Demo Account", 5000.0);
@@ -1100,10 +983,6 @@ public class PatternDemoManager {
 }package HSEBank.finance.Application;
 
 import HSEBank.finance.Core.services.BalanceService;
-import HSEBank.finance.Infrastructure.data.cache.BankAccountRepositoryProxy;
-import HSEBank.finance.Infrastructure.data.cache.CategoryRepositoryProxy;
-import HSEBank.finance.Infrastructure.data.cache.OperationRepositoryProxy;
-import HSEBank.finance.Infrastructure.data.cache.RepositoryProxy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -1112,9 +991,6 @@ import org.springframework.stereotype.Component;
 public class SystemToolsManager {
     private final CLIMenuService menuService;
     private final BalanceService balanceService;
-    private final BankAccountRepositoryProxy bankAccountProxy;
-    private final CategoryRepositoryProxy categoryProxy;
-    private final OperationRepositoryProxy operationProxy;
 
     public void showSystemToolsMenu() {
         while (true) {
@@ -1138,36 +1014,19 @@ public class SystemToolsManager {
                     result.totalAccounts, result.correctedAccounts, result.totalCorrection
             ));
         } catch (Exception e) {
-            menuService.showError("Recalculation failed: " + e.getMessage());
+            menuService.showError(e.getMessage());
         }
     }
 
     private void showCacheStatistics() {
-        menuService.showMessage("\nCACHE STATISTICS:");
-
-        var bankStats = bankAccountProxy.getCacheStatistics();
-        var categoryStats = categoryProxy.getCacheStatistics();
-        var operationStats = operationProxy.getCacheStatistics();
-
-        menuService.showMessage("Bank Accounts:    " + formatStats(bankStats));
-        menuService.showMessage("Categories:       " + formatStats(categoryStats));
-        menuService.showMessage("Operations:       " + formatStats(operationStats));
-    }
-
-    private String formatStats(RepositoryProxy.CacheStatistics stats) {
-        return String.format("Hits: %d, Misses: %d, Hit Ratio: %.1f%%, Size: %d",
-                stats.hits(), stats.misses(), stats.hitRatio() * 100, stats.size());
+        // Реализация статистики кэша может быть добавлена позже
+        menuService.showMessage("\n CACHE STATISTICS:");
+        menuService.showMessage("Cache statistics feature coming soon...");
     }
 
     private void clearCache() {
-        try {
-            bankAccountProxy.clearCache();
-            categoryProxy.clearCache();
-            operationProxy.clearCache();
-            menuService.showSuccess("All caches cleared successfully");
-        } catch (Exception e) {
-            menuService.showError("Cache clearing failed: " + e.getMessage());
-        }
+        // Реализация очистки кэша может быть добавлена позже
+        menuService.showSuccess("Cache clearing feature coming soon...");
     }
 }package HSEBank.finance.Core.domain.entities;
 
@@ -1295,11 +1154,6 @@ public class Operation implements IEntity {
 public enum OperationType {
     INCOME,
     EXPENSE
-}package HSEBank.finance.Core.domain.interfaces;
-
-public interface DataImporter {
-    String importData(String filePath);
-    boolean supportsFormat(String format);
 }package HSEBank.finance.Core.domain.interfaces;
 
 import HSEBank.finance.Core.domain.entities.BankAccount;
@@ -3206,66 +3060,65 @@ public class OperationFacade implements IOperationService {
                 .filter(op -> !op.getDate().isBefore(startDate) && !op.getDate().isAfter(endDate))
                 .toList();
     }
-}package HSEBank.finance.Infrastructure.data.cache;
+}package HSEBank.finance.Infrastructure.config;
 
 import HSEBank.finance.Core.domain.entities.BankAccount;
-import HSEBank.finance.Infrastructure.data.repositories.BankAccountRepository;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
-
-@Repository
-public class BankAccountRepositoryProxy extends RepositoryProxy<BankAccount> {
-    public BankAccountRepositoryProxy(BankAccountRepository realRepository) {
-        super(realRepository);
-    }
-}package HSEBank.finance.Infrastructure.data.cache;
-
 import HSEBank.finance.Core.domain.entities.Category;
-import HSEBank.finance.Infrastructure.data.repositories.CategoryRepository;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
-
-@Repository
-public class CategoryRepositoryProxy extends RepositoryProxy<Category> {
-    public CategoryRepositoryProxy(CategoryRepository realRepository) {
-        super(realRepository);
-    }
-}package HSEBank.finance.Infrastructure.data.cache;
-
 import HSEBank.finance.Core.domain.entities.Operation;
+import HSEBank.finance.Core.domain.interfaces.IRepository;
+import HSEBank.finance.Infrastructure.data.cache.RepositoryProxy;
+import HSEBank.finance.Infrastructure.data.repositories.BankAccountRepository;
+import HSEBank.finance.Infrastructure.data.repositories.CategoryRepository;
 import HSEBank.finance.Infrastructure.data.repositories.OperationRepository;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
 
-@Repository
-public class OperationRepositoryProxy extends RepositoryProxy<Operation> {
-    public OperationRepositoryProxy(OperationRepository realRepository) {
-        super(realRepository);
+@Configuration
+public class RepositoryConfig {
+
+    @Bean
+    @Primary
+    public IRepository<BankAccount> bankAccountRepository() {
+        BankAccountRepository realRepository = new BankAccountRepository();
+        return new RepositoryProxy<>(realRepository);
+    }
+
+    @Bean
+    @Primary
+    public IRepository<Category> categoryRepository() {
+        CategoryRepository realRepository = new CategoryRepository();
+        return new RepositoryProxy<>(realRepository);
+    }
+
+    @Bean
+    @Primary
+    public IRepository<Operation> operationRepository() {
+        OperationRepository realRepository = new OperationRepository();
+        return new RepositoryProxy<>(realRepository);
     }
 }package HSEBank.finance.Infrastructure.data.cache;
 
 import HSEBank.finance.Core.domain.interfaces.IEntity;
 import HSEBank.finance.Core.domain.interfaces.IRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
-@Component
 public class RepositoryProxy<T extends IEntity> implements IRepository<T> {
     private final IRepository<T> realRepository;
     private final ConcurrentHashMap<UUID, T> cache = new ConcurrentHashMap<>();
-    private final AtomicInteger cacheHits = new AtomicInteger(0);
-    private final AtomicInteger cacheMisses = new AtomicInteger(0);
+    private int cacheHits = 0;
+    private int cacheMisses = 0;
+    private boolean allCached = false;
 
     public RepositoryProxy(IRepository<T> realRepository) {
         this.realRepository = realRepository;
-        log.info("RepositoryProxy initialized for {}", realRepository.getClass().getSimpleName());
+        log.info("RepositoryProxy initialized for: {}", realRepository.getClass().getSimpleName());
     }
 
     @Override
@@ -3278,33 +3131,48 @@ public class RepositoryProxy<T extends IEntity> implements IRepository<T> {
 
     @Override
     public Optional<T> findById(UUID id) {
-        T entity = cache.get(id);
-        if (entity != null) {
-            cacheHits.incrementAndGet();
+        // Проверяем кэш
+        T cached = cache.get(id);
+        if (cached != null) {
+            cacheHits++;
             log.debug("Cache HIT for ID: {}", id);
-            return Optional.of(entity);
+            return Optional.of(cached);
         }
 
-        cacheMisses.incrementAndGet();
+        // Кэш промах - идем в реальное хранилище
+        cacheMisses++;
         log.debug("Cache MISS for ID: {}", id);
         Optional<T> result = realRepository.findById(id);
-        result.ifPresent(e -> {
-            cache.put(e.getId(), e);
-            log.debug("Cached entity: {}", e.getId());
+
+        // Кэшируем найденный результат
+        result.ifPresent(entity -> {
+            cache.put(entity.getId(), entity);
+            log.debug("Cached entity: {}", entity.getId());
         });
+
         return result;
     }
 
     @Override
     public List<T> findAll() {
-        log.debug("Finding all entities");
+        // Если уже закэшировали все, возвращаем из кэша
+        if (allCached && !cache.isEmpty()) {
+            cacheHits++;
+            log.debug("Returning ALL from cache");
+            return List.copyOf(cache.values());
+        }
+
+        // Иначе загружаем и кэшируем
+        cacheMisses++;
+        log.debug("Loading ALL from real repository");
         List<T> allEntities = realRepository.findAll();
 
         // Обновляем кэш
         cache.clear();
         allEntities.forEach(entity -> cache.put(entity.getId(), entity));
-        log.debug("Cached {} entities", allEntities.size());
+        allCached = true;
 
+        log.debug("Cached {} entities", cache.size());
         return allEntities;
     }
 
@@ -3313,51 +3181,57 @@ public class RepositoryProxy<T extends IEntity> implements IRepository<T> {
         log.debug("Deleting entity: {}", id);
         realRepository.delete(id);
         cache.remove(id);
+        // Если удалили элемент, сбрасываем флаг allCached
+        allCached = false;
     }
 
     @Override
     public boolean exists(UUID id) {
-        boolean existsInCache = cache.containsKey(id);
-        if (existsInCache) {
-            cacheHits.incrementAndGet();
+        // Сначала проверяем кэш
+        if (cache.containsKey(id)) {
+            cacheHits++;
             return true;
         }
 
-        cacheMisses.incrementAndGet();
+        cacheMisses++;
         return realRepository.exists(id);
     }
 
-    public CacheStatistics getCacheStatistics() {
-        int hits = cacheHits.get();
-        int misses = cacheMisses.get();
-        int total = hits + misses;
-        double hitRatio = total > 0 ? (double) hits / total : 0.0;
-
-        return new CacheStatistics(
-                hits,
-                misses,
-                total,
-                hitRatio,
-                cache.size()
+    // Методы для мониторинга кэша
+    public CacheStats getCacheStats() {
+        return new CacheStats(
+                cacheHits,
+                cacheMisses,
+                cache.size(),
+                getCacheHitRatio()
         );
     }
 
+    public double getCacheHitRatio() {
+        int total = cacheHits + cacheMisses;
+        return total > 0 ? (double) cacheHits / total : 0.0;
+    }
+
     public void clearCache() {
-        int size = cache.size();
+        log.info("Clearing cache. Had {} entities", cache.size());
         cache.clear();
-        cacheHits.set(0);
-        cacheMisses.set(0);
-        log.info("Cache cleared. Removed {} entities", size);
+        cacheHits = 0;
+        cacheMisses = 0;
+        allCached = false;
     }
 
-    public void printCacheStats() {
-        CacheStatistics stats = getCacheStatistics();
-        log.info("Cache Statistics for {}: Hits={}, Misses={}, HitRatio={:.2f}%, Size={}",
-                realRepository.getClass().getSimpleName(),
-                stats.hits(), stats.misses(), stats.hitRatio() * 100, stats.size());
-    }
+    public static class CacheStats {
+        public final int hits;
+        public final int misses;
+        public final int size;
+        public final double hitRatio;
 
-    public static record CacheStatistics(int hits, int misses, int totalRequests, double hitRatio, int size) {
+        public CacheStats(int hits, int misses, int size, double hitRatio) {
+            this.hits = hits;
+            this.misses = misses;
+            this.size = size;
+            this.hitRatio = hitRatio;
+        }
     }
 }package HSEBank.finance.Infrastructure.data.repositories;
 

@@ -5,6 +5,7 @@ import HSEBank.finance.Core.domain.interfaces.IBankAccountService;
 import HSEBank.finance.Core.patterns.commands.CreateAccountCommand;
 import HSEBank.finance.Core.patterns.commands.UpdateAccountCommand;
 import HSEBank.finance.Core.patterns.decorator.TimingDecorator;
+import HSEBank.finance.Core.services.BalanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class AccountManagementService {
     private final IBankAccountService accountService;
     private final CLIMenuService menuService;
     private final InputValidator inputValidator;
+    private final BalanceService balanceService;
 
     public void createAccount() {
         try {
@@ -78,6 +80,21 @@ public class AccountManagementService {
         }
     }
 
+    public void findAccountById() {
+        try {
+            String id = inputValidator.getValidatedUUID("Enter account ID: ");
+            BankAccount account = accountService.getAccount(UUID.fromString(id));
+
+            menuService.showMessage("\n ACCOUNT DETAILS:");
+            menuService.showMessage("ID: " + account.getId());
+            menuService.showMessage("Name: " + account.getName());
+            menuService.showMessage("Balance: " + account.getBalance());
+
+        } catch (Exception e) {
+            menuService.showError("Account not found: " + e.getMessage());
+        }
+    }
+
     public void updateAccount() {
         try {
             String id = inputValidator.getValidatedUUID("Enter account ID to update: ");
@@ -108,6 +125,16 @@ public class AccountManagementService {
         } catch (Exception e) {
             log.error("Account deletion failed", e);
             menuService.showError("Failed to delete account");
+        }
+    }
+
+    public void recalculateAccountBalance() {
+        try {
+            String accountId = inputValidator.getValidatedUUID("Enter account ID to recalculate: ");
+            double newBalance = balanceService.recalculateBalance(UUID.fromString(accountId));
+            menuService.showSuccess("Balance recalculated: " + newBalance);
+        } catch (Exception e) {
+            menuService.showError(e.getMessage());
         }
     }
 }
