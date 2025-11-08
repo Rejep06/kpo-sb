@@ -77,5 +77,21 @@
 - Заместитель (Прокси)
 - Компоновщик (Composite)
 - Мост (Bridge)
-- Приспособленец (Flyweight)
+- Приспособленец (Flyweight)~~
 - +1 уникальный факт связанный с темами выше или семинаром
+
+## Практика 8
+- Что такое ddd? зачем нужно как разделяется?
+- Что такое event storming?
+- json что за формат, зачем нужен?
+- MARKDOWN что за формат, зачем нужен?
+- XML что за формат, зачем нужен?
+- CSV что за формат, зачем нужен?
+- REST
+- SOAP
+- CRUD
+- @Controller vs @RestController
+- @RequestMapping vs @GetMapping vs @PostMapping vs @PutMapping vs @DeleteMapping
+- @PathVariable vs @RequestBody vs @RequestParam
+- @Valid + @Pattern + @Min + @Max + @Nullable + @NotNull
+- Swagger - что это + @Operation, OpenAPI
