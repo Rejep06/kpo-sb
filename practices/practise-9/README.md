@@ -44,6 +44,7 @@ public class MyEntity {
 
 **Пример репозитория:**
 ```java
+
 public interface CarRepository extends JpaRepository<Car, Integer> {
     // Spring Data генерирует реализацию автоматически
     List<Car> findByEngineType(String engineType);
