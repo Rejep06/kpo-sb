@@ -1,191 +1,80 @@
-# Занятие 12. Версионирование БД
+# Практика 10: Межсервисное взаимодействие с Notification Service
 
-## Цель занятия
-- Научиться работать с версионированием базы данных.
-## Требования к реализации
-1. Бд и java приложение подняты в докере.
-2. Хранение покупателей происходит в контейнере.
-3. Связь между покупателями и машинами one-many.
-## Тестирование
-1. Добавить через свагер или постман сущность, получить информацию о ней в ответ.
-## Задание на доработку
-1. Добиться работы версионирования
-   - В application.yaml поле ddl-auto: none
-   - При удалении всех таблиц из бд и старте приложения, они создаются
-   - В бд есть таблицы databasechangelog и databasechangeloglock
-## Пояснения к реализации
-Добавьте репозиторий покупателей, по аналогии с предыдущими.
-Для создания связи one-many между покупателем и машинами изменим сущность Customer
-```
-@Getter
-@Setter
-@ToString
-@Entity
-@Table(name = "customers")
-@NoArgsConstructor
-public class Customer {
+## Цель семинара
+Настроить взаимодействие основного сервиса продажи транспортных средств с внешним микросервисом уведомлений, развернутым в Docker-контейнере.
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+## Предварительные требования
+- Запущенный Docker и Docker Compose сервиса уведомлений (в папке `notifications`)
+- Основной сервис настроен для работы с Spring Boot
 
-    @Column(nullable = false, unique = true)
-    private String name;
+## Задание
 
-    @Column(nullable = false)
-    private int legPower;
+### Часть 1: Конфигурация межсервисного взаимодействия
 
-    @Column(nullable = false)
-    private int handPower;
+**Задача:** Настроить основной сервис для коммуникации с сервисом уведомлений через REST API.
 
-    @Column(nullable = false)
-    private int iq;
+**Требуется реализовать:**
 
-    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Car> cars;
+1. **Конфигурационный класс RestClient**
+   - Создать бин `RestClient` для HTTP-запросов
+   - Настроить базовый URL через properties файл
+   - Добавить стандартные заголовки для JSON-формата
+   - Настроить таймауты для устойчивости к сетевым сбоям
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "catamaran_id")
-    private Catamaran catamaran;
+2. **DTO классы для сериализации/десериализации**
+   - `NotificationRequest` - запрос на отправку уведомления
+   - `NotificationResponse` - ответ от сервиса уведомлений
 
-    public Customer(String name, int legPower, int handPower, int iq) {
-        this.name = name;
-        this.legPower = legPower;
-        this.handPower = handPower;
-        this.iq = iq;
-    }
-}
-```
-А так же добавим поле покупателя в машину
-```
-    @ManyToOne
-    @JoinColumn(name = "customer_id")
-    private Customer customer; // Ссылка на владельца
-```
-Удалите CustomerStorage и создайте CustomerService
-```
-package hse.kpo.services;
+**Критерии успеха:**
+- Основной сервис может отправлять HTTP-запросы к notification-service
+- Конфигурация вынесена в properties файл
+- Обработка ошибок на уровне конфигурации
 
-import java.util.List;
-import hse.kpo.domains.Customer;
-import hse.kpo.interfaces.CustomerProvider;
-import hse.kpo.repositories.CustomerRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+### Часть 2: Клиент для работы с сервисом уведомлений
 
-@RequiredArgsConstructor
-@Service
-public class CustomerService implements CustomerProvider {
-    @Autowired
-    private CustomerRepository customerRepository;
+**Задача:** Создать абстракцию для взаимодействия с API уведомлений.
 
-    @Override
-    public List<Customer> getCustomers() {
-        return customerRepository.findAll();
-    }
+**Требуется реализовать:**
 
-    @Override
-    public void addCustomer(Customer customer) {
-        customerRepository.save(customer);
-    }
+1. **Интерфейс NotificationClient**
+   - Метод для отправки уведомлений
 
-    @Transactional
-    @Override
-    public Customer updateCustomer(CustomerRequest request) {
-        var customerOptional = customerRepository.findByName(request.getName());
+2. **Реализацию NotificationClientImpl**
+   - Использование настроенного `RestClient`
+   - Обработка HTTP-статусов и исключений
+   - Логирование запросов и ответов
 
-        if (customerOptional.isPresent()) {
-            var customer = customerOptional.get();
-            customer.setIq(request.getIq());
-            customer.setHandPower(request.getHandPower());
-            customer.setLegPower(request.getLegPower());
-            return customerRepository.save(customer);
-        }
-        throw new KpoException(HttpStatus.NOT_FOUND.value(), String.format("no customer with name: %s", request.getName()));
-    }
+**Критерии успеха:**
+- Изоляция логики HTTP-запросов в отдельном компоненте
+- Корректная обработка сетевых ошибок
+- Информативное логирование для отладки
 
-    @Transactional
-    @Override
-    public boolean deleteCustomer(String name) {
-        customerRepository.deleteByName(name); // Добавьте метод в CustomerRepository
-        return true;
-    }
-}
-```
-Обновите метод продажи машин
-```
-    @Sales
-    public void sellCars() {
-        customerProvider.getCustomers().stream()
-            .filter(customer -> customer.getCars() == null || customer.getCars().isEmpty())
-            .forEach(customer -> {
-                Car car = takeCar(customer);
-                if (Objects.nonNull(car)) {
-                    customer.getCars().add(car); // Добавляем автомобиль в список клиента
-                    car.setCustomer(customer);   // Устанавливаем ссылку на клиента в автомобиле
-                    carRepository.save(car);     // Сохраняем изменения
-                    notifyObserversForSale(customer, ProductionTypes.CAR, car.getVin());
-                } else {
-                    log.warn("No car in CarService");
-                }
-            });
-    }
-```
-Нужно самостоятельно исправить все остальные ошибки, которые мешают запуску.
+### Часть 3: Интеграция с бизнес-логикой
 
-Для включения версионирования обновите application.yml:
-```
-spring:
-  application:
-    name: kpo-app
-  datasource:
-    url: jdbc:postgresql://localhost:5432/car_db
-    username: postgres
-    password: postgres
-#    url: ${SPRING_DATASOURCE_URL}
-#    username: ${SPRING_DATASOURCE_USERNAME}
-#    password: ${SPRING_DATASOURCE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: none
-#      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-  liquibase:
-    enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-server:
-  port: 8080
+**Задача:** Встроить отправку уведомлений в процесс продажи транспортных средств.
 
-```
-и build.gradle
-```
-plugins {
-	id("org.liquibase.gradle") version "2.0.4"
-}
+**Требуется реализовать:**
 
-dependencies {
-	implementation("org.liquibase:liquibase-core")
-	liquibaseRuntime("org.liquibase:liquibase-core")
-	liquibaseRuntime("org.liquibase.ext:liquibase-hibernate6:5.0.0")
-```
+1. **Модификацию HseCarService**
+   - Инъекция `NotificationClient`
+   - Отправка уведомления при успешной продаже автомобиля
+   - Формирование информативного сообщения для клиента
 
-Для запуска java приложения с бд в докере в папке проекта выполните сборку проекта
-```bash
-docker-compose build
-```
-После этого запустите приложение
-```bash
-docker-compose up
-```
+**Критерии успеха:**
+- Уведомления отправляются при каждой успешной продаже
+- Сообщения содержат релевантную информацию о покупке
 
-Теперь приложение доступно по стандартному порту в браузере
-<details> 
-<summary>Ссылки</summary>
-1. 
-</details>
+## Технические детали реализации
+
+### Конфигурация RestClient
+- Использование билдера для создания экземпляра RestClient 
+(создайте класс RestClientConfig в котором создадите стандартный клиент для всех интеграций с уведомлениями)
+- Настройка базового URL через @EnableConfigurationProperties(NotificationIntegrationProperty.class)
+- Стандартные заголовки: Content-Type: application/json, Accept: application/json
+
+### Демонстрация работы
+1. Запуск сервиса уведомлений через Docker Compose
+2. Запуск основного сервиса
+3. Выполнение операций продажи транспортных средств
+4. Проверка логов на предмет отправки уведомлений
+5. Проверка бд на наличие уведомлений о том, что сообщение появилось
