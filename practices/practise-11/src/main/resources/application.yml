@@ -19,5 +19,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+notifications-integration:
+    url: "http://localhost:8081"
+    get-all-endpoint: "/api/notifications"
+
 server:
   port: 8080
