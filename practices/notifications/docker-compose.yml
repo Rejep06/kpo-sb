@@ -23,7 +23,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notifications_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
       - "8081:8081"
     depends_on:
