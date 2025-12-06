@@ -35,6 +35,7 @@ repositories {
 dependencies {
     // Spring
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
 
     // Lombok
@@ -49,6 +50,11 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
+
+    // Для работы с Kafka в Spring Boot
+    implementation("org.springframework.kafka:spring-kafka")
+    // Для подключения к брокеру Kafka
+    implementation("org.apache.kafka:kafka-clients")
 
 }
 
