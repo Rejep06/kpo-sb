@@ -1,0 +1,41 @@
+{
+  "accounts": [
+    {
+      "id": "80483c94-9ae7-4f4c-9f95-47c661018dd5",
+      "name": "Main Account",
+      "balance": 2850.0
+    }
+  ],
+  "categories": [
+    {
+      "id": "e8064a27-e80f-4793-9017-8cd90537a9ed",
+      "type": "INCOME",
+      "name": "Salary"
+    },
+    {
+      "id": "a1647d0e-07f6-43a3-b5ca-39551d1d3a43",
+      "type": "EXPENSE",
+      "name": "Food"
+    }
+  ],
+  "operations": [
+    {
+      "id": "4c85f8e3-c131-46a2-8eac-06aa2e3cbc15",
+      "type": "EXPENSE",
+      "bankAccountId": "80483c94-9ae7-4f4c-9f95-47c661018dd5",
+      "amount": 150.0,
+      "date": "2025-11-05T02:14:59.070925700",
+      "categoryId": "a1647d0e-07f6-43a3-b5ca-39551d1d3a43",
+      "description": "Grocery shopping"
+    },
+    {
+      "id": "fd025f0c-6a41-47fb-a6c6-0e4f15ba9d0c",
+      "type": "INCOME",
+      "bankAccountId": "80483c94-9ae7-4f4c-9f95-47c661018dd5",
+      "amount": 2000.0,
+      "date": "2025-11-05T02:14:59.070925700",
+      "categoryId": "e8064a27-e80f-4793-9017-8cd90537a9ed",
+      "description": "Monthly salary"
+    }
+  ]
+}

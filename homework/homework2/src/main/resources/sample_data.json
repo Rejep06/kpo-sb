@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "name": "Savings Account",
+      "balance": 5000.0
+    }
+  ],
+  "categories": [
+    {
+      "id": "223e4567-e89b-12d3-a456-426614174000",
+      "type": "EXPENSE",
+      "name": "Entertainment"
+    },
+    {
+      "id": "323e4567-e89b-12d3-a456-426614174000",
+      "type": "INCOME",
+      "name": "Bonus"
+    }
+  ],
+  "operations": [
+    {
+      "id": "423e4567-e89b-12d3-a456-426614174000",
+      "type": "EXPENSE",
+      "bankAccountId": "123e4567-e89b-12d3-a456-426614174000",
+      "amount": 100.0,
+      "date": "2024-01-15T18:30:00",
+      "categoryId": "223e4567-e89b-12d3-a456-426614174000",
+      "description": "Cinema tickets"
+    }
+  ]
+}
