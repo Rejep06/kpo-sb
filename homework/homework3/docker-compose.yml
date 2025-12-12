@@ -1,0 +1,85 @@
+services:
+  storage-db:
+    image: postgres:15-alpine
+    container_name: storage-db
+    environment:
+      POSTGRES_DB: storage_db
+      POSTGRES_USER: storage_user
+      POSTGRES_PASSWORD: storage_password
+    volumes:
+      - storage_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storage_user -d storage_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  file-storage-service:
+    build: ./file-storage-service
+    container_name: file_storage_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://storage-db:5432/storage_db
+      SPRING_DATASOURCE_USERNAME: storage_user
+      SPRING_DATASOURCE_PASSWORD: storage_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    volumes:
+      - ./files:/opt/app/files
+    ports:
+      - "8081:8081"
+    depends_on:
+      storage-db:
+        condition: service_healthy
+
+  analysis-db:
+    image: postgres:15-alpine
+    container_name: analysis-db
+    environment:
+      POSTGRES_DB: analysis_db
+      POSTGRES_USER: analysis_user
+      POSTGRES_PASSWORD: analysis_password
+    volumes:
+      - analysis_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U analysis_user -d analysis_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  file-analysis-service:
+    build: ./file-analysis-service
+    container_name: file_analysis_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://analysis-db:5432/analysis_db
+      SPRING_DATASOURCE_USERNAME: analysis_user
+      SPRING_DATASOURCE_PASSWORD: analysis_password
+      SERVICES_STORAGE_BASE_URL: http://file-storage-service:8081
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8082:8082"
+    depends_on:
+      file-storage-service:
+        condition: service_started
+      analysis-db:
+        condition: service_healthy
+
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway_service
+    depends_on:
+      file-storage-service:
+        condition: service_started
+      file-analysis-service:
+        condition: service_started
+    environment:
+      SERVICES_STORAGE_BASE_URL: http://file-storage-service:8081
+      SERVICES_ANALYSIS_BASE_URL: http://file-analysis-service:8082
+    ports:
+      - "8080:8080"
+
+volumes:
+  storage_data:
+  analysis_data:
