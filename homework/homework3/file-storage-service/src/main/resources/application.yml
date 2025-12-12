@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: file-storage
+  datasource:
+    url: jdbc:postgresql://storage-db:5432/storage_db
+    username: storage_user
+    password: storage_password
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+storage:
+  base-dir: /opt/app/files
+
+server:
+  port: 8081
+
