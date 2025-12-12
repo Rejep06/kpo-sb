@@ -24,16 +24,13 @@ public class WorkController {
      * multipart/form-data: studentId, assignmentId, file
      */
     @PostMapping(consumes = {"multipart/form-data"})
-    public UploadWorkResponse upload(
-            @RequestPart("studentId") String studentId,
-            @RequestPart("assignmentId") Long assignmentId,
-            @RequestPart("file") MultipartFile file) throws IOException {
+    public UploadWorkResponse upload(@ModelAttribute UploadWorkRequest request) throws IOException {
 
         UploadWorkMetadata metadata = new UploadWorkMetadata();
-        metadata.setStudentId(studentId);
-        metadata.setAssignmentId(assignmentId);
+        metadata.setStudentId(request.getStudentId());
+        metadata.setAssignmentId(request.getAssignmentId());
 
-        return workFacade.uploadWork(metadata, file);
+        return workFacade.uploadWork(metadata, request.getFile());
     }
 
     /**
