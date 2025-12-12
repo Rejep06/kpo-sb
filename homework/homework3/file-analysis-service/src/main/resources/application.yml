@@ -24,4 +24,4 @@ server:
 # url
 services:
   storage:
-    base-url: http://file-storage:8081
+    base-url: http://file-storage-service:8081
