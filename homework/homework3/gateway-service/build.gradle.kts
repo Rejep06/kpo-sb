@@ -37,16 +37,11 @@ dependencies {
 
 	implementation("org.springframework.boot:spring-boot-starter-web")
 
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	runtimeOnly("org.postgresql:postgresql")
-
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
 
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 
 	implementation("org.springframework.boot:spring-boot-starter-aop")
-
-	implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
 }
 
