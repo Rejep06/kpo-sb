@@ -1,0 +1,8 @@
+server:
+  port: 8080
+
+services:
+  storage:
+    base-url: http://file-storage-service:8081
+  analysis:
+    base-url: http://file-analysis-service:8082

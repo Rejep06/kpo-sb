@@ -1,0 +1,12 @@
+services:
+  gateway-service:
+    build: .
+    container_name: gateway_service
+    depends_on:
+      - file-storage-service
+      - file-analysis-service
+    environment:
+      SERVICES_STORAGE_BASE-URL: http://file-storage-service:8081
+      SERVICES_ANALYSIS_BASE-URL: http://file-analysis-service:8082
+    ports:
+      - "8080:8080"
