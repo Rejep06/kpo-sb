@@ -1,7 +1,7 @@
 package hse.antiplag.analysis.exception;
 
 public class ReportNotFoundException extends RuntimeException {
-  public ReportNotFoundException(String message) {
-    super(message);
-  }
+    public ReportNotFoundException(Long id) {
+        super("Report with id=" + id + " not found");
+    }
 }

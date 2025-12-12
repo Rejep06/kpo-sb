@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: file-analysis
+  datasource:
+    url: jdbc:postgresql://analysis-db:5432/analysis_db
+    username: analysis_user
+    password: analysis_password
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+storage:
+  base-dir: /opt/app/files
+
+server:
+  port: 8082
+
+# url
+services:
+  storage:
+    base-url: http://file-storage:8081

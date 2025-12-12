@@ -1,0 +1,42 @@
+services:
+  analysis-db:
+    image: postgres:15-alpine
+    container_name: analysis-db
+    environment:
+      POSTGRES_DB: analysis_db
+      POSTGRES_USER: analysis_user
+      POSTGRES_PASSWORD: analysis_password
+    volumes:
+      - analysis_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analysis_user -d analysis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  file-storage-service:
+    image: file-storage-service
+    container_name: file-storage-service
+    ports:
+      - "8081:8081"
+
+  file-analysis-service:
+    build: .
+    container_name: file_analysis_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://analysis-db:5432/analysis_db
+      SPRING_DATASOURCE_USERNAME: analysis_user
+      SPRING_DATASOURCE_PASSWORD: analysis_password
+      SERVICES_STORAGE_BASE_URL: http://file-storage-service:8081
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      analysis-db:
+        condition: service_healthy
+      file-storage-service:
+        condition: service_started
+
+
+volumes:
+  analysis_data:

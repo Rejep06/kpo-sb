@@ -1,4 +1,4 @@
-package hse.antiplag.analysis.entity;
+package hse.antiplag.analysis.dto;
 
 import lombok.Data;
 
