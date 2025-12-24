@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            orders-service:
+              - uri: http://orders-service-1:8081
+              - uri: http://orders-service-2:8081
+            payments-service:
+              - uri: http://payments-service:8082
+
+    gateway:
+      # WebSocket proxy is enabled by using ws:// or lb:ws:// URIs in routes.
+      routes:
+        # Orders REST
+        - id: orders-rest
+          uri: lb://orders-service
+          predicates:
+            - Path=/api/orders/**
+
+        # Payments REST
+        - id: payments-rest
+          uri: lb://payments-service
+          predicates:
+            - Path=/api/accounts/**
+
+        # Orders WebSocket (real-time status tracking)
+        - id: orders-ws
+          uri: lb:ws://orders-service
+          predicates:
+            - Path=/ws/**
+
+        # Frontend (static)
+        - id: frontend
+          uri: http://frontend:80
+          predicates:
+            - Path=/**
+          order: 1000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

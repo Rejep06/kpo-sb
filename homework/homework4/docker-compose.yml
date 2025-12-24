@@ -1,0 +1,143 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: gozon-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  redis:
+    image: redis:7
+    container_name: gozon-redis
+    ports:
+      - "6379:6379"
+
+  orders-db:
+    image: postgres:16
+    container_name: gozon-orders-db
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+    ports:
+      - "5433:5432"
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+
+  payments-db:
+    image: postgres:16
+    container_name: gozon-payments-db
+    environment:
+      POSTGRES_DB: payments
+      POSTGRES_USER: payments
+      POSTGRES_PASSWORD: payments
+    ports:
+      - "5434:5432"
+    volumes:
+      - payments_db_data:/var/lib/postgresql/data
+
+  orders-service-1:
+    build:
+      context: .
+      dockerfile: orders-service/Dockerfile
+    container_name: gozon-orders-service-1
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: orders-db
+      DB_PORT: 5432
+      DB_NAME: orders
+      DB_USER: orders
+      DB_PASSWORD: orders
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: guest
+      RABBIT_PASSWORD: guest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      INSTANCE_ID: 1
+    depends_on:
+      - orders-db
+      - rabbitmq
+      - redis
+
+  orders-service-2:
+    build:
+      context: .
+      dockerfile: orders-service/Dockerfile
+    container_name: gozon-orders-service-2
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: orders-db
+      DB_PORT: 5432
+      DB_NAME: orders
+      DB_USER: orders
+      DB_PASSWORD: orders
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: guest
+      RABBIT_PASSWORD: guest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      INSTANCE_ID: 2
+    depends_on:
+      - orders-db
+      - rabbitmq
+      - redis
+
+  payments-service:
+    build:
+      context: .
+      dockerfile: payments-service/Dockerfile
+    container_name: gozon-payments-service
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      DB_HOST: payments-db
+      DB_PORT: 5432
+      DB_NAME: payments
+      DB_USER: payments
+      DB_PASSWORD: payments
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: guest
+      RABBIT_PASSWORD: guest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - payments-db
+      - rabbitmq
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gozon-frontend
+    depends_on:
+      - orders-service-1
+      - payments-service
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: gozon-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+    depends_on:
+      - orders-service-1
+      - orders-service-2
+      - payments-service
+      - frontend
+
+volumes:
+  orders_db_data:
+  payments_db_data:

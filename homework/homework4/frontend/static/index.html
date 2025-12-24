@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoZon – Orders realtime</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>GoZon</h1>
+    <p class="muted">
+      Демо WebSocket-уведомлений: создайте заказ → подключимся к WebSocket → при смене статуса придёт push.
+    </p>
+
+    <section class="card">
+      <h2>Пользователь</h2>
+      <div class="row">
+        <label>
+          X-User-Id
+          <input id="userId" value="user-1" />
+        </label>
+        <button id="btnNotify">Разрешить уведомления</button>
+      </div>
+      <p class="muted">
+        Для WebSocket в браузере нельзя ставить кастомный заголовок, поэтому userId передаётся параметром в URL.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Payments</h2>
+      <div class="row">
+        <button id="btnCreateAccount">Создать счёт</button>
+        <label>
+          Пополнить (minor units)
+          <input id="topupAmount" type="number" value="10000" />
+        </label>
+        <button id="btnTopup">Пополнить</button>
+        <button id="btnBalance">Баланс</button>
+      </div>
+      <div class="result" id="balanceResult">Баланс: —</div>
+    </section>
+
+    <section class="card">
+      <h2>Orders</h2>
+      <div class="row">
+        <label>
+          Amount (minor units)
+          <input id="orderAmount" type="number" value="2500" />
+        </label>
+        <label>
+          Description
+          <input id="orderDescription" value="New Year gift" />
+        </label>
+        <button id="btnCreateOrder">Создать заказ</button>
+      </div>
+
+      <div class="result">
+        <div><b>orderId:</b> <span id="orderId">—</span></div>
+        <div><b>status:</b> <span id="orderStatus">—</span></div>
+        <div><b>ws:</b> <span id="wsState">disconnected</span></div>
+      </div>
+
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
