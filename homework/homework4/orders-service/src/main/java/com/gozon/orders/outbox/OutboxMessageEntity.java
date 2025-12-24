@@ -25,8 +25,7 @@ public class OutboxMessageEntity {
     @Column(name = "type", nullable = false, length = 64)
     private String type;
 
-    @Lob
-    @Column(name = "payload", nullable = false)
+    @Column(name = "payload", nullable = false, columnDefinition = "text")
     private String payload;
 
     @Enumerated(EnumType.STRING)
@@ -36,8 +35,7 @@ public class OutboxMessageEntity {
     @Column(name = "attempts", nullable = false)
     private int attempts;
 
-    @Lob
-    @Column(name = "last_error")
+    @Column(name = "last_error", columnDefinition = "text")
     private String lastError;
 
     @Column(name = "created_at", nullable = false)

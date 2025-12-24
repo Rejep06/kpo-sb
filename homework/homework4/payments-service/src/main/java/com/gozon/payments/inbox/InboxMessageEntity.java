@@ -18,8 +18,7 @@ public class InboxMessageEntity {
     @Column(name = "type", nullable = false, length = 64)
     private String type;
 
-    @Lob
-    @Column(name = "payload", nullable = false)
+    @Column(name = "payload", nullable = false, columnDefinition = "text")
     private String payload;
 
     @Column(name = "received_at", nullable = false)
